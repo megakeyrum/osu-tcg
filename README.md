@@ -1,104 +1,67 @@
-# osu! Card Arena
+# osu! Card Arena — independent Cloudflare edition
 
-Custom osu! tournament card-game prototype, inspired by Slay the Spire.
+Owner osu! ID: **15336211**. All other visitors start as players, regardless of who signs in first.
 
-## What this export is
+## Apply this update
 
-This is the editable source, including the Modernized Versions card sheet update.
-It is ready to store in your GitHub repository. It is **not yet a standalone production deployment**.
-The currently published ChatGPT Site is separate and is not updated by uploading this ZIP.
-The original Site ID, repository credentials, local database, dependencies and build outputs are excluded.
+Extract the update ZIP. Upload every file and folder inside `osu-tcg` to the ROOT of your existing GitHub repository, replacing matching files. Preserve the folder structure.
+This update does not require deleting the old prototype files: they are no longer referenced by the active build.
 
-## Included
+The active entrypoints are `index.html`, `src/main.tsx`, `vite.config.ts`, and `worker/index.mjs`.
+`app/chatgpt-auth.ts`, `app/api/arena/route.ts`, `.openai`, and the old Sites scripts are unused by this edition.
 
-- React interface, collection browser, deck builder, pack opening and card trades.
-- Organizer awards for currency, packs and cards; owner-managed organizer roles.
-- Five-card hands, three base mana per round, score entry and one-map score buffs.
-- Server-side game actions, private match hands and optimistic concurrency checks.
-- Cloudflare D1 schema and migration for persistent state.
-- Modernized catalog: 41 playable-card definitions, 27 artifacts, 14 archived old cards.
-- Names missing in the sheet have explicit `Unnamed` labels; unknown values remain unknown.
-- Metadata includes sheet mana costs, rarity colors and keyword text.
-- Basic automated effects: the unnamed +6% round card and Higher Score (+15,000).
-- Artifacts, complex effects, and most keyword mechanics are catalogued but **not automated**.
-  Stone cannot be played. Pack draws exclude artifacts, unobtainable entries and old cards.
-  Pack odds remain uniform draft odds, not rarity-weighted odds.
+## Deployment setup, in order
 
-## Upload to your GitHub account
+1. Create a Cloudflare D1 database named `osu-tcg`.
+2. Copy its Database ID into `wrangler.jsonc`, replacing `REPLACE_WITH_YOUR_D1_DATABASE_ID`.
+3. In that database's console, execute the SQL from `migrations/0001_initial.sql` (or run `pnpm db:remote` with Wrangler authenticated).
+4. Connect the GitHub repository to a Cloudflare **Worker**. Use the repository root, build command `pnpm build`, and deploy command `pnpm exec wrangler deploy`.
+5. The initial deployment can display the sandbox without OAuth credentials. Copy its assigned HTTPS URL into `SITE_URL` in `wrangler.jsonc`.
+6. In your osu! account settings, register an OAuth application with callback URL:
+   `https://YOUR_ACTUAL_WORKER_HOST/auth/osu/callback`
+   Use the exact deployed URL, not the placeholder above.
+7. Put the application's Client ID in `OSU_CLIENT_ID` in `wrangler.jsonc`.
+8. Add `OSU_CLIENT_SECRET` as a **secret** in Cloudflare's Worker settings. Never commit it to GitHub or paste it into chat.
+9. Redeploy with the updated configuration. Open the site and sign in with osu!. User 15336211 receives owner access.
+10. Have friends sign in, then assign admins from Organizer. Test real accounts before using the app in a tournament.
 
-1. Create an empty repository on GitHub, for example `osu-tcg`. Private is fine.
-2. Extract this ZIP and open a terminal **inside the `osu-tcg` folder**.
-3. Run the following, replacing the URL with the exact URL of your empty repository:
+You do not need a custom domain. If you add one later, update both `SITE_URL` and the osu! application's callback URL.
 
-```sh
-git init
-git add .
-git commit -m "Import osu tournament card game"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/osu-tcg.git
-git push -u origin main
-```
+## Local checks
 
-Authenticate using GitHub's normal credential manager or GitHub CLI. Do not paste access tokens into source files or remote URLs.
-Do not run these initialization steps inside an existing repository with unrelated work.
-You can also open the extracted folder with GitHub Desktop and publish a new repository.
-
-## Local development
-
-Install Node.js 22.13 or newer and the pnpm version listed in `package.json`.
-From this directory:
+Requires Node.js 22.13+ and the pnpm version pinned in package.json.
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm test
 pnpm typecheck
 pnpm build
+pnpm exec wrangler deploy --dry-run
 ```
 
-Apply the local database migration once, then start development:
+For a local sandbox, `pnpm dev` starts Vite. `pnpm preview` serves the built frontend and Worker together.
+For local OAuth testing, use a separate osu! OAuth application and `.dev.vars` with `SITE_URL=http://localhost:8787`, `OSU_CLIENT_ID`, and `OSU_CLIENT_SECRET`.
+Apply `pnpm db:local` before testing local persistence. Never commit `.dev.vars`.
 
-```sh
-node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js d1 execute DB --local --config dist/server/wrangler.json --persist-to .wrangler/state --file drizzle/0000_redundant_blue_shield.sql
-pnpm dev
-```
+## Security and data
 
-Open the URL printed by the development server (normally http://localhost:5173).
-The unauthenticated interface provides an in-memory sandbox. Its state resets on refresh.
-The retained starter also provides loopback-only mock ChatGPT sign-in for local database testing;
-this is a development identity, not a real osu! account. See `STARTER-NOTES.md`.
+- Login uses osu!'s authorization-code flow with the `identify` scope.
+- Login state is bound to an HttpOnly browser cookie, expires in 10 minutes, and is consumed once in D1.
+- Sessions last seven days, use HttpOnly/SameSite cookies, and are stored as token hashes in D1.
+- No ChatGPT authentication headers are trusted by the independent Worker.
+- State mutations check session identity, roles, origin and optimistic concurrency version.
+- The owner ID is configured server-side. Admin roles can be granted by the owner.
+- This starts a new database; it does not copy accounts or inventories from the private prototype.
 
-## Before independent hosting
+## Game implementation status
 
-GitHub stores the code; GitHub Pages cannot run this server and database.
-The current stack uses Vinext/React, Cloudflare Workers and D1.
+Modernized sheet: 41 card definitions, 27 artifacts, 14 archived old cards. Unnamed entries remain explicitly unnamed. Mana costs and effect text come from the sheet.
 
-The following work is still required before running a public tournament outside ChatGPT Sites:
+Collection, deck saving, organizer awards, packs, trading and the basic round loop are implemented.
+The unnamed +6% round card and Higher Score are automated. Stone is unplayable.
+Other complex effects, artifact passives and most keyword lifecycle rules are **not automated**. Pack odds remain provisional and uniform over eligible playable cards.
 
-1. Replace `app/chatgpt-auth.ts` and its usage in `app/api/arena/route.ts` with secure osu! OAuth sessions.
-   The current trusted authentication headers are supplied by ChatGPT Sites and must NOT be accepted
-   from arbitrary internet requests on an independently hosted Worker.
-2. Register your osu! OAuth application. Configure a fixed callback URL and keep its client secret
-   in the host's secret storage. Validate OAuth state and use secure server-issued sessions.
-3. Replace first-visitor owner assignment in `lib/engine.mjs` with an explicit owner osu! user ID.
-   First-visitor assignment is only appropriate behind the existing owner-private Site access gate.
-4. Replace the Sites-specific deployment configuration with your own Worker and D1 configuration.
-   The zero UUID in the local Vite binding is a development placeholder, not a production database.
-5. Apply migrations to your own D1 database, configure secrets and deploy under your account.
-6. Test two genuine player accounts, admin authorization, pack concurrency, trading and persistence.
-7. Implement and balance the remaining card/artifact rules before competitive use.
+## Validation
 
-No osu! client secret, GitHub token, Cloudflare token, or production database is included in this export.
-
-## Main files
-
-- `app/arena.tsx`: interface and sandbox.
-- `app/globals.css`: styling.
-- `app/api/arena/route.ts`: authenticated game API and D1 persistence.
-- `lib/engine.mjs`: authoritative game actions and per-player views.
-- `lib/catalog.json`: Modernized Versions catalog.
-- `lib/catalog-update.mjs`: catalog update that preserves owned copies and snapshots live hands.
-- `db/schema.ts`, `drizzle/`: database schema and migration.
-- `tests/`: game rules and catalog tests.
-
-The `.gitignore` excludes secrets, dependencies, generated files and local database state.
-Third-party dependency licenses remain applicable; the vendored Sites plugin license is retained.
+Game/catalog tests, mocked OAuth/security tests, TypeScript checking, the production frontend build, and Wrangler's deployment dry run were run during preparation.
+Live osu! OAuth and Cloudflare persistence still require validation after you configure your actual account, database and secret.
