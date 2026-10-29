@@ -24,7 +24,7 @@
   ],
   "vars": {
     "OWNER_OSU_ID": "15336211",
-    "SITE_URL": "https://REPLACE_WITH_YOUR_WORKER_URL",
-    "OSU_CLIENT_ID": ""
+    "SITE_URL": "https://osu-tcg.megakeyrum.workers.dev",
+    "OSU_CLIENT_ID": "73466"
   }
 }
