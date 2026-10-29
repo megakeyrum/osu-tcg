@@ -13,6 +13,6 @@ assert.equal(catalog.find(c=>c.name==='Stone').rarity,'Unobtainable');
 const old={id:'c1',name:'Gaming Chair',type:'Card',cost:1,kind:'percent',value:6};
 const state={catalog:[old],players:[{id:'a',cards:[{uid:'copy',card:'c1'}],deck:['copy']}],matches:[{phase:'cards',players:[{hand:[{uid:'copy',card:'c1'}],draw:[],discard:[]}]}],audit:[]};
 assert(updateCatalog(state,catalog));assert.equal(state.players[0].cards.length,1);assert.equal(state.players[0].deck.length,0);assert.equal(state.matches[0].players[0].hand[0].definition.type,'Card');assert(!updateCatalog(state,catalog));
-const s=initialState(catalog);register(s,'owner','Owner');s.players[0].packs=10;
+const s=initialState(catalog);register(s,'owner','Owner').role='owner';s.players[0].packs=10;
 for(let i=0;i<10;i++)for(const id of mutate(s,'owner',{type:'open'})){const c=catalog.find(c=>c.id===id);assert.equal(c.type,'Card');assert.notEqual(c.rarity,'Unobtainable');}
 console.log('PASS: modernized catalog, source costs, artifacts, archive, migration preservation, pack eligibility.');

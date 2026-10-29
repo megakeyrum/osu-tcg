@@ -1,6 +1,6 @@
 import {initialState,register,mutate,view,adjusted} from '../lib/engine.mjs';
 import fs from 'node:fs';import assert from 'node:assert/strict';
-const s=initialState(JSON.parse(fs.readFileSync(new URL('../lib/catalog.json',import.meta.url))));register(s,'a','Alice');register(s,'b','Bob');
+const s=initialState(JSON.parse(fs.readFileSync(new URL('../lib/catalog.json',import.meta.url))));register(s,'a','Alice').role='owner';register(s,'b','Bob');
 assert.throws(()=>mutate(s,'b',{type:'award',player:'b',amount:2,resource:'packs',reason:'test'}));
 for(const p of s.players){mutate(s,'a',{type:'award',player:p.id,amount:5,resource:'card',card:'modern-card-01',reason:'test'});mutate(s,p.id,{type:'deck',cards:p.cards.map(c=>c.uid)});}
 mutate(s,'a',{type:'matchCreate',p1:'a',p2:'b'});const m=s.matches[0];assert.equal(view(s,'a').matches[0].players[1].hand.length,0);
