@@ -18,7 +18,7 @@
     {
       "binding": "DB",
       "database_name": "osu-tcg",
-      "database_id": "REPLACE_WITH_YOUR_D1_DATABASE_ID",
+      "database_id": "6b535aed-145f-43ce-b3dd-0706bedc2a63",
       "migrations_dir": "migrations"
     }
   ],
